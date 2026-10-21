@@ -1,0 +1,55 @@
+name: Build DrawStep debug APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Unpack project ZIP if present
+        run: |
+          if [ -f drawstep-project.zip ]; then
+            unzip -o drawstep-project.zip
+            rm drawstep-project.zip
+            git config user.name "github-actions"
+            git config user.email "actions@users.noreply.github.com"
+            git add -A
+            git commit -m "Unpack DrawStep project"
+            git push
+          fi
+
+      - name: Check project layout
+        run: |
+          if [ ! -f settings.gradle.kts ]; then
+            echo "ERROR: settings.gradle.kts not found in repo root."
+            echo "Files in repo root:"
+            ls -la
+            exit 1
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+
+      - name: Run unit tests and build debug APK
+        run: gradle testDebugUnitTest assembleDebug --stacktrace
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DrawStep-debug-apk
+          path: app/build/outputs/apk/debug/*.
+          
