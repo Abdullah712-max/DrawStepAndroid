@@ -1,5 +1,8 @@
+
 package com.drawstep.app.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,32 +18,49 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.drawstep.app.data.Lesson
 import com.drawstep.app.data.SampleLessons
 import com.drawstep.app.ui.theme.CardGradient
 
-private data class ModeInfo(val name: String, val description: String, val phase: String)
+private data class ModeInfo(
+    val name: String,
+    val description: String,
+    val phase: String
+)
 
 private val upcomingModes = listOf(
     ModeInfo("Tracing Studio", "Trace a reference with adjustable opacity.", "Phase 4"),
     ModeInfo("Practice Canvas", "Freehand drawing with undo and save.", "Phase 3"),
     ModeInfo("Construction Guides", "Learn head construction and proportions.", "Phase 5"),
     ModeInfo("Reference Comparison", "Compare your drawing beside a reference.", "Phase 5"),
-    ModeInfo("Photo Import", "Pick a photo with the system photo picker.", "Phase 4"),
     ModeInfo("Online AI Lessons", "Optional, with consent. Needs a secure backend.", "Later")
 )
 
 @Composable
 fun HomeScreen(onOpenLesson: (String) -> Unit) {
+    var selectedPhoto by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val photoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        selectedPhoto = uri?.toString()
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -64,12 +84,44 @@ fun HomeScreen(onOpenLesson: (String) -> Unit) {
                 )
             }
         }
+
+        item {
+            SectionTitle("Import your photo")
+            Spacer(Modifier.height(8.dp))
+            Button(
+                onClick = { photoPicker.launch("image/*") },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Choose from Gallery")
+            }
+
+            selectedPhoto?.let { photo ->
+                Spacer(Modifier.height(12.dp))
+                AsyncImage(
+                    model = photo,
+                    contentDescription = "Selected reference photo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "Photo imported! Drawing-step conversion is the next feature.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
         item { SectionTitle("Start a lesson") }
         items(SampleLessons.all) { lesson ->
             LessonCard(lesson = lesson, onClick = { onOpenLesson(lesson.id) })
         }
+
         item { SectionTitle("Coming soon") }
-        items(upcomingModes) { mode -> ModeRow(mode) }
+        items(upcomingModes) { mode ->
+            ModeRow(mode)
+        }
     }
 }
 
